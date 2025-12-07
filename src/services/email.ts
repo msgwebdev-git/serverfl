@@ -823,4 +823,306 @@ export const emailService = {
       return false;
     }
   },
+
+  // Send B2B invoice
+  async sendB2BInvoice(
+    orderNumber: string,
+    companyName: string,
+    contactName: string,
+    contactEmail: string,
+    invoiceNumber: string,
+    invoiceUrl: string,
+    finalAmount: number,
+    language: 'ro' | 'ru'
+  ): Promise<boolean> {
+    try {
+      const isRu = language === 'ru';
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${isRu ? 'Счёт на оплату' : 'Factură proformă'}</title>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+            <tr>
+              <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%;">
+
+                  <!-- Header -->
+                  <tr>
+                    <td style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); padding: 48px 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                      <h1 style="margin: 0 0 12px 0; color: white; font-size: 28px; font-weight: 800;">
+                        ${isRu ? 'Счёт на оплату' : 'Factură proformă'}
+                      </h1>
+                      <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 16px;">
+                        ${isRu ? 'Festivalul Lupilor - B2B заказ' : 'Festivalul Lupilor - Comandă B2B'}
+                      </p>
+                    </td>
+                  </tr>
+
+                  <!-- Content -->
+                  <tr>
+                    <td style="background: #ffffff; padding: 40px 30px;">
+                      <p style="margin: 0 0 20px 0; font-size: 20px; color: #1a1a1a;">
+                        ${isRu ? 'Здравствуйте' : 'Bună ziua'}, <strong>${contactName}</strong>!
+                      </p>
+
+                      <p style="margin: 0 0 32px 0; font-size: 16px; color: #555; line-height: 1.6;">
+                        ${isRu
+                          ? `Благодарим за заказ! Ваш счёт ${invoiceNumber} готов к оплате.`
+                          : `Vă mulțumim pentru comandă! Factura ${invoiceNumber} este gata de plată.`}
+                      </p>
+
+                      <!-- Invoice Box -->
+                      <table width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; border: 2px solid #1e40af; border-radius: 12px; margin-bottom: 32px;">
+                        <tr>
+                          <td style="padding: 32px;">
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                              <tr>
+                                <td style="padding: 8px 0; color: #666; font-size: 14px;">${isRu ? 'Компания:' : 'Companie:'}</td>
+                                <td style="padding: 8px 0; color: #1a1a1a; font-weight: 600; text-align: right;">${companyName}</td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 8px 0; color: #666; font-size: 14px;">${isRu ? '№ Заказа:' : 'Nr. Comandă:'}</td>
+                                <td style="padding: 8px 0; color: #1a1a1a; font-weight: 600; text-align: right;">${orderNumber}</td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 8px 0; color: #666; font-size: 14px;">${isRu ? '№ Счёта:' : 'Nr. Factură:'}</td>
+                                <td style="padding: 8px 0; color: #1a1a1a; font-weight: 600; text-align: right;">${invoiceNumber}</td>
+                              </tr>
+                              <tr>
+                                <td colspan="2" style="padding: 20px 0 8px 0; border-top: 2px solid #e2e8f0;"></td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 8px 0; color: #1e40af; font-size: 16px; font-weight: 700;">${isRu ? 'ИТОГО К ОПЛАТЕ:' : 'TOTAL DE PLATĂ:'}</td>
+                                <td style="padding: 8px 0; color: #1e40af; font-size: 24px; font-weight: 800; text-align: right;">${Math.round(finalAmount).toLocaleString()} MDL</td>
+                              </tr>
+                            </table>
+
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 24px;">
+                              <tr>
+                                <td style="text-align: center;">
+                                  <a href="${invoiceUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 16px 40px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 12px rgba(30,64,175,0.3);">
+                                    📄 ${isRu ? 'Скачать счёт' : 'Descarcă factura'}
+                                  </a>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- Payment Instructions -->
+                      <table width="100%" cellpadding="0" cellspacing="0" style="background: #fffbeb; border-radius: 12px; margin-bottom: 32px;">
+                        <tr>
+                          <td style="padding: 20px;">
+                            <p style="margin: 0 0 12px 0; color: #92400e; font-size: 16px; font-weight: 700;">
+                              ${isRu ? 'Инструкция по оплате:' : 'Instrucțiuni de plată:'}
+                            </p>
+                            <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
+                              ${isRu
+                                ? 'Пожалуйста, укажите номер счёта в описании платежа. После получения оплаты мы сгенерируем и отправим билеты на этот email.'
+                                : 'Vă rugăm să indicați numărul facturii în descrierea plății. După primirea plății, vom genera și trimite biletele pe acest email.'}
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p style="margin: 0; font-size: 18px; color: #1e40af; font-weight: 700; text-align: center;">
+                        ${isRu ? 'Спасибо за сотрудничество!' : 'Mulțumim pentru colaborare!'}
+                      </p>
+                    </td>
+                  </tr>
+
+                  <!-- Footer -->
+                  <tr>
+                    <td style="background: #1a1a1a; padding: 32px 30px; border-radius: 0 0 16px 16px; text-align: center;">
+                      <p style="margin: 0 0 12px 0; color: #999; font-size: 14px;">
+                        ${isRu ? 'Есть вопросы? Свяжитесь с нами' : 'Ai întrebări? Contactează-ne la'} <a href="mailto:b2b@festivalullupilor.md" style="color: #1e40af; text-decoration: none; font-weight: 500;">b2b@festivalullupilor.md</a>
+                      </p>
+                      <p style="margin: 0; color: #666; font-size: 12px;">
+                        © 2025 Festivalul Lupilor
+                      </p>
+                    </td>
+                  </tr>
+
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const { error } = await resend.emails.send({
+        from: config.email.from,
+        to: contactEmail,
+        subject: isRu
+          ? `Счёт на оплату ${invoiceNumber} - Festivalul Lupilor`
+          : `Factură ${invoiceNumber} - Festivalul Lupilor`,
+        html,
+      });
+
+      if (error) {
+        console.error('Send B2B invoice error:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('B2B invoice email error:', error);
+      return false;
+    }
+  },
+
+  // Send B2B tickets
+  async sendB2BTickets(
+    orderNumber: string,
+    companyName: string,
+    contactName: string,
+    contactEmail: string,
+    ticketCount: number,
+    language: 'ro' | 'ru'
+  ): Promise<boolean> {
+    try {
+      const isRu = language === 'ru';
+      const apiUrl = config.apiUrl || 'https://api.festivalullupilor.md';
+      const downloadAllUrl = `${apiUrl}/api/b2b/orders/${orderNumber}/download-tickets`;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${isRu ? 'Ваши билеты' : 'Biletele dumneavoastră'}</title>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+            <tr>
+              <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%;">
+
+                  <!-- Header -->
+                  <tr>
+                    <td style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 48px 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                      <h1 style="margin: 0 0 12px 0; color: white; font-size: 32px; font-weight: 800; letter-spacing: 2px;">
+                        ${isRu ? 'БИЛЕТЫ ГОТОВЫ!' : 'BILETE GATA!'}
+                      </h1>
+                      <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 16px;">
+                        Festivalul Lupilor - B2B ${isRu ? 'Заказ' : 'Comandă'}
+                      </p>
+                    </td>
+                  </tr>
+
+                  <!-- Content -->
+                  <tr>
+                    <td style="background: #ffffff; padding: 40px 30px;">
+                      <p style="margin: 0 0 20px 0; font-size: 20px; color: #1a1a1a;">
+                        ${isRu ? 'Здравствуйте' : 'Bună ziua'}, <strong>${contactName}</strong>!
+                      </p>
+
+                      <p style="margin: 0 0 32px 0; font-size: 16px; color: #555; line-height: 1.6;">
+                        ${isRu
+                          ? `Ваши ${ticketCount} билетов для <strong>${companyName}</strong> готовы!`
+                          : `Cele ${ticketCount} bilete pentru <strong>${companyName}</strong> sunt gata!`}
+                      </p>
+
+                      <!-- Download Box -->
+                      <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #059669; border-radius: 12px; margin-bottom: 32px;">
+                        <tr>
+                          <td style="padding: 40px; text-align: center;">
+                            <p style="margin: 0 0 8px 0; color: #047857; font-size: 14px; font-weight: 600;">
+                              ${isRu ? '№ Заказа:' : 'Nr. Comandă:'} <strong>${orderNumber}</strong>
+                            </p>
+                            <p style="margin: 0 0 24px 0; color: #059669; font-size: 32px; font-weight: 800;">
+                              ${ticketCount} ${isRu ? 'билетов' : 'bilete'}
+                            </p>
+                            <a href="${downloadAllUrl}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 18px 48px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 18px; box-shadow: 0 4px 16px rgba(5,150,105,0.4);">
+                              📦 ${isRu ? 'Скачать все билеты' : 'Descarcă toate biletele'}
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- Important Notice -->
+                      <table width="100%" cellpadding="0" cellspacing="0" style="background: #fef3c7; border-radius: 12px; margin-bottom: 32px;">
+                        <tr>
+                          <td style="padding: 20px;">
+                            <p style="margin: 0 0 12px 0; color: #92400e; font-size: 16px; font-weight: 700;">
+                              💡 ${isRu ? 'Важно:' : 'Important:'}
+                            </p>
+                            <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
+                              ${isRu
+                                ? 'Каждый билет содержит уникальный QR-код. Пожалуйста, убедитесь, что каждый участник имеет свой билет (распечатанный или на телефоне) при входе на фестиваль.'
+                                : 'Fiecare bilet conține un cod QR unic. Vă rugăm să vă asigurați că fiecare participant are biletul său (tipărit sau pe telefon) la intrarea pe festival.'}
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- Event Info -->
+                      <table width="100%" cellpadding="0" cellspacing="0" style="background: #fafafa; border-radius: 12px; padding: 24px;">
+                        <tr>
+                          <td style="text-align: center;">
+                            <p style="margin: 0 0 8px 0; color: #DC5722; font-size: 24px; font-weight: 800; letter-spacing: 2px;">
+                              FESTIVALUL LUPILOR
+                            </p>
+                            <p style="margin: 0; color: #666; font-size: 16px;">
+                              7-9 ${isRu ? 'Августа' : 'August'} 2026 • Orheiul Vechi
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p style="margin: 32px 0 0 0; font-size: 22px; color: #059669; font-weight: 700; text-align: center;">
+                        ${isRu ? 'Ждём вас на фестивале!' : 'Vă așteptăm la festival!'}
+                      </p>
+                    </td>
+                  </tr>
+
+                  <!-- Footer -->
+                  <tr>
+                    <td style="background: #1a1a1a; padding: 32px 30px; border-radius: 0 0 16px 16px; text-align: center;">
+                      <p style="margin: 0 0 12px 0; color: #999; font-size: 14px;">
+                        ${isRu ? 'Есть вопросы? Свяжитесь с нами' : 'Ai întrebări? Contactează-ne la'} <a href="mailto:b2b@festivalullupilor.md" style="color: #059669; text-decoration: none; font-weight: 500;">b2b@festivalullupilor.md</a>
+                      </p>
+                      <p style="margin: 0; color: #666; font-size: 12px;">
+                        © 2025 Festivalul Lupilor
+                      </p>
+                    </td>
+                  </tr>
+
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const { error } = await resend.emails.send({
+        from: config.email.from,
+        to: contactEmail,
+        subject: isRu
+          ? `Ваши билеты готовы! - Festivalul Lupilor`
+          : `Biletele dumneavoastră sunt gata! - Festivalul Lupilor`,
+        html,
+      });
+
+      if (error) {
+        console.error('Send B2B tickets error:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('B2B tickets email error:', error);
+      return false;
+    }
+  },
 };

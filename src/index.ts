@@ -10,6 +10,7 @@ import checkoutRoutes from './routes/checkout.js';
 import promoRoutes from './routes/promo.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
+import b2bRoutes from './routes/b2b.js';
 
 // Cron jobs
 import { initCronJobs } from './services/cron.js';
@@ -38,6 +39,7 @@ app.use('/api/checkout', checkoutRoutes);
 app.use('/api/promo', promoRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/b2b', b2bRoutes);
 
 // Error handler
 app.use(errorHandler);
