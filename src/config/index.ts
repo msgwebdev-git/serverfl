@@ -8,8 +8,8 @@ export const config = {
   // Server
   port: parseInt(process.env.PORT || '3001', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
-  apiUrl: process.env.API_URL || 'http://localhost:3001',
+  frontendUrl: (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, ''),
+  apiUrl: (process.env.API_URL || 'http://localhost:3001').replace(/\/$/, ''),
 
   // Supabase
   supabase: {
