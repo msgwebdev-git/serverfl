@@ -3,8 +3,10 @@ import { z } from 'zod';
 import archiver from 'archiver';
 import { AppError } from '../middleware/errorHandler.js';
 import { orderService } from '../services/order.js';
+import { b2bOrderService } from '../services/b2b-order.js';
 import { paymentService } from '../services/payment.js';
 import { config } from '../config/index.js';
+import { supabase } from '../services/supabase.js';
 
 
 const router = Router();
@@ -134,8 +136,23 @@ router.post('/mock-process', async (req: Request, res: Response, next: NextFunct
     // Update mock transaction status
     paymentService.processMockCallback(transactionId, status);
 
-    // Find order by transaction ID
-    const order = await orderService.getOrderByTransactionId(transactionId);
+    // Find order by transaction ID (check both regular and B2B orders)
+    let order = await orderService.getOrderByTransactionId(transactionId);
+    let isB2BOrder = false;
+
+    // If not found in regular orders, check B2B orders
+    if (!order) {
+      const { data: b2bOrder } = await supabase
+        .from('b2b_orders')
+        .select('*')
+        .eq('maib_transaction_id', transactionId)
+        .single();
+
+      if (b2bOrder) {
+        order = b2bOrder;
+        isB2BOrder = true;
+      }
+    }
 
     if (!order) {
       throw new AppError('Order not found', 404);
@@ -143,15 +160,31 @@ router.post('/mock-process', async (req: Request, res: Response, next: NextFunct
 
     if (status === 'OK') {
       // Payment successful
-      await orderService.markAsPaid(order.id);
-      orderService.processSuccessfulOrder(order.id).catch(console.error);
+      if (isB2BOrder) {
+        await b2bOrderService.markAsPaid(order.id);
+        // Wait for ticket generation to complete before redirecting
+        try {
+          await b2bOrderService.generateTickets(order.id);
+          console.log(`B2B tickets generated successfully for order ${order.id}`);
+        } catch (ticketError) {
+          console.error(`Failed to generate B2B tickets for order ${order.id}:`, ticketError);
+          // Continue anyway - tickets can be generated manually later
+        }
+      } else {
+        await orderService.markAsPaid(order.id);
+        orderService.processSuccessfulOrder(order.id).catch(console.error);
+      }
       res.json({
         success: true,
         redirectUrl: `${config.frontendUrl}/checkout/success?order=${order.order_number}`,
       });
     } else if (status === 'FAILED') {
       // Payment failed
-      await orderService.markAsFailed(order.id, 'MOCK_FAILED');
+      if (isB2BOrder) {
+        await b2bOrderService.updateStatus(order.id, 'payment_failed', undefined, 'Mock payment failed');
+      } else {
+        await orderService.markAsFailed(order.id, 'MOCK_FAILED');
+      }
       res.json({
         success: true,
         redirectUrl: `${config.frontendUrl}/checkout/failed?order=${order.order_number}&reason=MOCK_FAILED`,
@@ -200,7 +233,43 @@ router.get('/tickets/:orderNumber', async (req: Request, res: Response, next: Ne
   try {
     const { orderNumber } = req.params;
 
-    const tickets = await orderService.getOrderTickets(orderNumber);
+    // Try regular orders first
+    let tickets = await orderService.getOrderTickets(orderNumber);
+
+    // If not found, try B2B orders
+    if (!tickets) {
+      const { data: b2bOrder } = await supabase
+        .from('b2b_orders')
+        .select('id, order_number, status')
+        .eq('order_number', orderNumber)
+        .single();
+
+      if (b2bOrder) {
+        // Get B2B order items
+        const { data: items } = await supabase
+          .from('b2b_order_items')
+          .select(`
+            ticket_code,
+            ticket_url,
+            ticket:tickets(name_ro, name_ru),
+            ticket_option:ticket_options(name_ro, name_ru)
+          `)
+          .eq('b2b_order_id', b2bOrder.id);
+
+        tickets = {
+          orderNumber: b2bOrder.order_number,
+          status: b2bOrder.status,
+          tickets: (items || []).map((item) => ({
+            ticketCode: item.ticket_code || '',
+            // @ts-ignore - joined data
+            ticketName: item.ticket?.name_ro || 'Ticket',
+            // @ts-ignore
+            optionName: item.ticket_option?.name_ro || null,
+            pdfUrl: item.ticket_url,
+          })),
+        };
+      }
+    }
 
     if (!tickets) {
       throw new AppError('Order not found', 404);
@@ -220,7 +289,43 @@ router.get('/tickets/:orderNumber/download', async (req: Request, res: Response,
   try {
     const { orderNumber } = req.params;
 
-    const ticketsData = await orderService.getOrderTickets(orderNumber);
+    // Try regular orders first
+    let ticketsData = await orderService.getOrderTickets(orderNumber);
+
+    // If not found, try B2B orders
+    if (!ticketsData) {
+      const { data: b2bOrder } = await supabase
+        .from('b2b_orders')
+        .select('id, order_number, status')
+        .eq('order_number', orderNumber)
+        .single();
+
+      if (b2bOrder) {
+        // Get B2B order items
+        const { data: items } = await supabase
+          .from('b2b_order_items')
+          .select(`
+            ticket_code,
+            ticket_url,
+            ticket:tickets(name_ro, name_ru),
+            ticket_option:ticket_options(name_ro, name_ru)
+          `)
+          .eq('b2b_order_id', b2bOrder.id);
+
+        ticketsData = {
+          orderNumber: b2bOrder.order_number,
+          status: b2bOrder.status,
+          tickets: (items || []).map((item) => ({
+            ticketCode: item.ticket_code || '',
+            // @ts-ignore - joined data
+            ticketName: item.ticket?.name_ro || 'Ticket',
+            // @ts-ignore
+            optionName: item.ticket_option?.name_ro || null,
+            pdfUrl: item.ticket_url,
+          })),
+        };
+      }
+    }
 
     if (!ticketsData) {
       throw new AppError('Order not found', 404);

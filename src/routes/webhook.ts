@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { orderService } from '../services/order.js';
+import { b2bOrderService } from '../services/b2b-order.js';
 import { paymentService } from '../services/payment.js';
+import { supabase } from '../services/supabase.js';
 
 const router = Router();
 
@@ -72,8 +74,23 @@ router.post('/maib', async (req: Request, res: Response, next: NextFunction): Pr
       statusMessage,
     });
 
-    // Find order by transaction ID
-    const order = await orderService.getOrderByTransactionId(transactionId);
+    // Find order by transaction ID (check both regular and B2B orders)
+    let order = await orderService.getOrderByTransactionId(transactionId);
+    let isB2BOrder = false;
+
+    // If not found in regular orders, check B2B orders
+    if (!order) {
+      const { data: b2bOrder } = await supabase
+        .from('b2b_orders')
+        .select('*')
+        .eq('maib_transaction_id', transactionId)
+        .single();
+
+      if (b2bOrder) {
+        order = b2bOrder;
+        isB2BOrder = true;
+      }
+    }
 
     if (!order) {
       console.error('MAIB Callback: Order not found for transaction', transactionId);
@@ -90,20 +107,39 @@ router.post('/maib', async (req: Request, res: Response, next: NextFunction): Pr
 
     if (successStatuses.includes(upperStatus)) {
       // Payment successful
-      await orderService.markAsPaid(order.id);
-
-      // Generate tickets and send email (async)
-      orderService.processSuccessfulOrder(order.id).catch(console.error);
-
-      console.log('MAIB Callback: Order marked as paid', order.id);
+      if (isB2BOrder) {
+        await b2bOrderService.markAsPaid(order.id);
+        // Generate tickets for B2B order
+        try {
+          await b2bOrderService.generateTickets(order.id);
+          console.log('MAIB Callback: B2B Order marked as paid and tickets generated', order.id);
+        } catch (ticketError) {
+          console.error('MAIB Callback: Failed to generate B2B tickets:', ticketError);
+        }
+      } else {
+        await orderService.markAsPaid(order.id);
+        // Generate tickets and send email (async)
+        orderService.processSuccessfulOrder(order.id).catch(console.error);
+        console.log('MAIB Callback: Order marked as paid', order.id);
+      }
     } else if (failedStatuses.includes(upperStatus)) {
       // Payment failed
-      await orderService.markAsFailed(order.id, statusCode || status);
-      console.log('MAIB Callback: Order marked as failed', order.id);
+      if (isB2BOrder) {
+        await b2bOrderService.updateStatus(order.id, 'payment_failed', undefined, `Payment failed: ${statusCode || status}`);
+        console.log('MAIB Callback: B2B Order marked as failed', order.id);
+      } else {
+        await orderService.markAsFailed(order.id, statusCode || status);
+        console.log('MAIB Callback: Order marked as failed', order.id);
+      }
     } else if (cancelledStatuses.includes(upperStatus)) {
       // Payment cancelled
-      await orderService.markAsFailed(order.id, 'CANCELLED');
-      console.log('MAIB Callback: Order marked as cancelled', order.id);
+      if (isB2BOrder) {
+        await b2bOrderService.updateStatus(order.id, 'cancelled', undefined, 'Payment cancelled by user');
+        console.log('MAIB Callback: B2B Order marked as cancelled', order.id);
+      } else {
+        await orderService.markAsFailed(order.id, 'CANCELLED');
+        console.log('MAIB Callback: Order marked as cancelled', order.id);
+      }
     } else {
       // Unknown status - log but don't fail
       console.warn('MAIB Callback: Unknown status', status);
@@ -133,8 +169,23 @@ router.post('/mock-payment', async (req: Request, res: Response, next: NextFunct
     // Update mock transaction
     paymentService.processMockCallback(transactionId, status);
 
-    // Find and update order
-    const order = await orderService.getOrderByTransactionId(transactionId);
+    // Find and update order (check both regular and B2B orders)
+    let order = await orderService.getOrderByTransactionId(transactionId);
+    let isB2BOrder = false;
+
+    // If not found in regular orders, check B2B orders
+    if (!order) {
+      const { data: b2bOrder } = await supabase
+        .from('b2b_orders')
+        .select('*')
+        .eq('maib_transaction_id', transactionId)
+        .single();
+
+      if (b2bOrder) {
+        order = b2bOrder;
+        isB2BOrder = true;
+      }
+    }
 
     if (!order) {
       res.status(404).json({ error: 'Order not found' });
@@ -142,10 +193,24 @@ router.post('/mock-payment', async (req: Request, res: Response, next: NextFunct
     }
 
     if (status === 'OK') {
-      await orderService.markAsPaid(order.id);
-      orderService.processSuccessfulOrder(order.id).catch(console.error);
+      if (isB2BOrder) {
+        await b2bOrderService.markAsPaid(order.id);
+        try {
+          await b2bOrderService.generateTickets(order.id);
+          console.log(`Mock payment: B2B tickets generated for order ${order.id}`);
+        } catch (ticketError) {
+          console.error(`Mock payment: Failed to generate B2B tickets:`, ticketError);
+        }
+      } else {
+        await orderService.markAsPaid(order.id);
+        orderService.processSuccessfulOrder(order.id).catch(console.error);
+      }
     } else {
-      await orderService.markAsFailed(order.id, 'MOCK_FAILED');
+      if (isB2BOrder) {
+        await b2bOrderService.updateStatus(order.id, 'payment_failed', undefined, 'Mock payment failed');
+      } else {
+        await orderService.markAsFailed(order.id, 'MOCK_FAILED');
+      }
     }
 
     res.json({

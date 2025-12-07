@@ -120,6 +120,9 @@ router.post('/create-order', async (req: Request, res: Response, next: NextFunct
         description: `B2B Order #${order.order_number}`,
         clientIp,
         language,
+        customerName: contact.name,
+        customerEmail: contact.email,
+        customerPhone: contact.phone,
       });
 
       await b2bOrderService.updateTransactionId(order.id, transaction.transactionId);

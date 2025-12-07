@@ -633,6 +633,14 @@ export const b2bOrderService = {
 
     await this.addHistoryEntry(orderId, 'tickets_generated', undefined, 'Tickets generated');
 
+    // Automatically send tickets to customer
+    try {
+      await this.markTicketsAsSent(orderId, 'system');
+    } catch (emailError) {
+      console.error('Failed to send tickets email:', emailError);
+      // Don't throw - tickets are generated, email can be sent manually
+    }
+
     return true;
   },
 };
