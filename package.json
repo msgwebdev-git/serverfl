@@ -43,6 +43,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/pdfkit": "^0.17.4",
     "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.2.7",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },
