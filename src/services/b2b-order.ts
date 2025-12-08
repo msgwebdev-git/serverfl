@@ -635,7 +635,7 @@ export const b2bOrderService = {
 
     // Automatically send tickets to customer
     try {
-      await this.markTicketsAsSent(orderId, 'system');
+      await this.markTicketsAsSent(orderId, undefined);
     } catch (emailError) {
       console.error('Failed to send tickets email:', emailError);
       // Don't throw - tickets are generated, email can be sent manually

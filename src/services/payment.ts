@@ -50,10 +50,10 @@ export const paymentService = {
     }
 
     try {
-      const baseUrl = config.frontendUrl;
-      const callbackUrl = `${baseUrl.replace('localhost', '127.0.0.1')}/api/webhook/maib`;
-      const okUrl = `${baseUrl}/checkout/success?order=${params.orderId}`;
-      const failUrl = `${baseUrl}/checkout/failed?order=${params.orderId}`;
+      const apiUrl = config.apiUrl;
+      const callbackUrl = `${apiUrl}/api/maib/callback`;
+      const okUrl = `${apiUrl}/api/maib/return/ok`;
+      const failUrl = `${apiUrl}/api/maib/return/fail`;
 
       const payment: PaymentResponse = await maibClient.createPayment({
         amount: params.amount,

@@ -11,6 +11,7 @@ import promoRoutes from './routes/promo.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
 import b2bRoutes from './routes/b2b.js';
+import maibRoutes from './routes/maib.js';
 
 // Cron jobs
 import { initCronJobs } from './services/cron.js';
@@ -40,6 +41,7 @@ app.use('/api/promo', promoRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/b2b', b2bRoutes);
+app.use('/api/maib', maibRoutes);
 
 // Error handler
 app.use(errorHandler);
