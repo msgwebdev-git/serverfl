@@ -10,7 +10,7 @@ const router = Router();
 // ==========================================
 
 // GET /api/mobile/tickets - Get all active tickets with options
-router.get('/tickets', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/tickets', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const { data: tickets, error } = await supabase
       .from('tickets')
@@ -429,7 +429,7 @@ router.get('/program', async (req: Request, res: Response, next: NextFunction) =
 // ==========================================
 
 // GET /api/mobile/partners - Get festival partners
-router.get('/partners', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/partners', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const { data: partners, error } = await supabase
       .from('partners')
@@ -512,7 +512,7 @@ router.get('/activities', async (req: Request, res: Response, next: NextFunction
 // ==========================================
 
 // GET /api/mobile/aftermovies - Get aftermovie videos
-router.get('/aftermovies', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/aftermovies', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const { data: videos, error } = await supabase
       .from('aftermovies')
